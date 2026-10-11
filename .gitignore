@@ -1,0 +1,18 @@
+# katalog roboczy instalatora: ignition z certyfikatami, kubeconfig, hasło kubeadmin
+install-dir/
+*.ign
+auth/
+kubeconfig
+kubeadmin-password
+.openshift_install*.log
+.openshift_install_state.json
+metadata.json
+
+# install-config zawiera pull secret i klucz SSH; do repo trafia tylko szablon
+install-config.yaml
+!install-config.example.yaml
+
+# klucze i sekrety
+*.pem
+*.key
+id_*
