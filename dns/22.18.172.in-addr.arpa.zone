@@ -1,0 +1,23 @@
+$TTL 1W
+@	IN	SOA	dns.okdupiklaster.lab.okd.	root (
+			2026070700	; serial
+			3H		; refresh (3 hours)
+			30M		; retry (30 minutes)
+			2W		; expiry (2 weeks)
+			1W )		; minimum (1 week)
+	IN	NS	dns.okdupiklaster.lab.okd.
+;
+63.22.18.172.in-addr.arpa.	IN	PTR	api.okdupiklaster.lab.okd.
+63.22.18.172.in-addr.arpa.	IN	PTR	api-int.okdupiklaster.lab.okd.
+;
+64.22.18.172.in-addr.arpa.	IN	PTR	bootstrap.okdupiklaster.lab.okd.
+;
+65.22.18.172.in-addr.arpa.	IN	PTR	cp0.okdupiklaster.lab.okd.
+66.22.18.172.in-addr.arpa.	IN	PTR	cp1.okdupiklaster.lab.okd.
+;
+67.22.18.172.in-addr.arpa.	IN	PTR	cp2.okdupiklaster.lab.okd.
+;
+61.22.18.172.in-addr.arpa.	IN	PTR	ha1.okdupiklaster.lab.okd.
+62.22.18.172.in-addr.arpa.	IN	PTR	ha2.okdupiklaster.lab.okd.
+;
+;EOF

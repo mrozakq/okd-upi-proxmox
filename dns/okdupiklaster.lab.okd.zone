@@ -1,0 +1,32 @@
+$TTL 1W
+@	IN	SOA	dns.okdupiklaster.lab.okd.	root (
+			226070700	; serial
+			3H		; refresh (3 hours)
+			30M		; retry (30 minutes)
+			2W		; expiry (2 weeks)
+			1W )		; minimum (1 week)
+	IN	NS	dns.okdupiklaster.lab.okd.
+;
+;
+
+;
+helper.okdupiklaster.lab.okd.	IN	A	172.18.22.63
+;
+api.okdupiklaster.lab.okd.		IN	A	172.18.22.63
+api-int.okdupiklaster.lab.okd.	IN	A	172.18.22.63
+;
+*.apps.okdupiklaster.lab.okd.	IN	A	172.18.22.63
+;
+bootstrap.okdupiklaster.lab.okd.	IN	A	172.18.22.64
+;
+cp0.okdupiklaster.lab.okd.	IN	A	172.18.22.65
+cp1.okdupiklaster.lab.okd.	IN	A	172.18.22.66
+;
+cp2.okdupiklaster.lab.okd.	IN	A	172.18.22.67
+;
+bastion.okdupiklaster.lab.okd.	IN	A	172.18.22.68
+dns.okdupiklaster.lab.okd.	IN	A	172.18.22.69
+;
+ha1.okdupiklaster.lab.okd.	IN	A	172.18.22.61
+ha2.okdupiklaster.lab.okd.	IN	A	172.18.22.62
+;EOF

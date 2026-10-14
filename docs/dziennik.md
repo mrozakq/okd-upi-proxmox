@@ -1,5 +1,8 @@
 # Dziennik prac
-o zrobiłem**
+
+## 2026-10-14: Etap 3 (część 1)
+
+Co zrobiłem
 Na podstawie tabeli wymagań DNS z dokumentacji OKD 4.19 i planu adresacji rozpisałem rekordy dla klastra `okdupiklaster.lab.okd`:
 
 | Nazwa | Adres | PTR |
@@ -27,3 +30,22 @@ Na podstawie tabeli wymagań DNS z dokumentacji OKD 4.19 i planu adresacji rozpi
 - PTR jest wymagany dla `api`, `api-int`, bootstrapu i węzłów klastra. Bastion i serwer DNS go nie potrzebują.
 - W klastrze kompaktowym nie ma osobnych workerów, więc nie ma rekordów compute.
 - Każdy rekord trzeba zweryfikować `dig`, bo literówka w nazwie jest łatwa do przeoczenia, a jej skutki trudne do zdiagnozowania.
+
+## 2026-10-14: Etap 3 (część 2), maszyna DNS i pliki stref
+
+**Co zrobiłem**
+- Postawiłem VM `dns.okdupiklaster.lab.okd` (Rocky Linux 9, 172.18.22.69): użytkownik z sudo (grupa wheel), nazwa hosta, stały adres przez `nmcli`.
+- Zainstalowałem BIND, napisałem strefę prostą `okdupiklaster.lab.okd` i odwrotną `22.18.172.in-addr.arpa` w `/var/named/`.
+- Obie strefy przeszły `named-checkzone`. Pliki mają właściciela `root:named`, prawa 640 i kontekst SELinux `named_zone_t`.
+
+**Co nie zadziałało i dlaczego**
+- Pierwsze pliki stref zapisałem na bastionie zamiast na maszynie DNS, bo VM DNS jeszcze nie istniała. Wniosek: przed pracą sprawdzać `hostname`.
+- `sudo chown ... /var/named/*.zone` zwracał „nie ma takiego pliku”. Gwiazdkę rozwija powłoka użytkownika przed uruchomieniem sudo, a zwykły użytkownik nie widzi zawartości `/var/named`. Rozwiązanie: pełne nazwy plików.
+- W strefach zostały pozostałości ze wzorca z dokumentacji (`smtp`, `MX`, `helper`, rekord NS wskazujący na VIP). Usunąłem je, a NS wskazuje teraz na `dns` (.69).
+- `named-checkzone` zgłosił brak TTL i „SOA not at top of zone”. Tekst wkleiłem do vi w trybie normalnym, więc pierwsze znaki zadziałały jak polecenia i zniknęła linia `$TTL` oraz znak `@`. Rozwiązanie: `:set paste`, `i`, dopiero potem wklejanie.
+
+**Czego się nauczyłem**
+- Rekord NS musi wskazywać na maszynę, na której działa `named`, nie na load balancer.
+- Numer seryjny strefy zapisuje się w formacie RRRRMMDDNN i zwiększa przy każdej zmianie.
+- Pliki stref w Rocky leżą w `/var/named/` i muszą mieć kontekst SELinux `named_zone_t`, inaczej `named` ich nie odczyta mimo poprawnych praw.
+- Błąd na linii 1 w `named-checkzone` to sygnał, żeby najpierw obejrzeć początek pliku (`head`).
