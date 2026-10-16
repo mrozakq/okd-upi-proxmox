@@ -52,9 +52,4 @@ Dlaczego OKD 4.19: procesory E7-8837 nie mają instrukcji AVX i obsługują pozi
 11. Konfiguracja po instalacji
 12. Druga instalacja od zera
 
-## Lessons learned
-
-- **Nie używać domeny `.local`.** Jest zarezerwowana dla mDNS (RFC 6762). Systemy takie jak Avahi czy systemd-resolved wysyłają zapytania o nazwy `.local` przez multicast, a nie do serwera DNS, więc węzły mogłyby nie rozwiązać `api` ani `api-int`.
-- **Węzły klastra muszą mieć stałe adresy.** Adres węzła jest wpisany w rekordy A i PTR, w konfigurację HAProxy i w członkostwo etcd. Zmiana adresu po restarcie zerwałaby komunikację, a w przypadku etcd groziłaby utratą kworum.
-- **Platforma `metal`, a nie `qemu`.** Na `qemu` uruchamia się gotowy obraz dysku, a plik ignition przekazuje hypervisor parametrem QEMU `fw_cfg`. W UPI bare metal węzeł startuje z ISO podpiętego w Proxmoxie, instaluje się przez `coreos-installer`, a plik ignition pobiera z bastionu spod adresu URL.
-- **Obraz ISO z instalatora, nie najnowszy ze strony.** Gwarantuje zgodność z wydaniem OKD i ze sprzętem.
+Wiecej w dziennik -> https://github.com/mrozakq/okd-upi-proxmox/blob/main/docs/dziennik.md
