@@ -68,3 +68,22 @@ Na podstawie tabeli wymagań DNS z dokumentacji OKD 4.19 i planu adresacji rozpi
 - `forwarders` pozwala serwerowi z własnymi strefami rozwiązywać też nazwy z internetu, co jest potrzebne węzłom do pobierania obrazów z `quay.io`.
 - Testy DNS robię z innej maszyny niż serwer, bo sprawdzają przy okazji firewall i adres nasłuchu.
 - Jeden adres IP może mieć kilka rekordów PTR, tak jak VIP z nazwami `api` i `api-int`.
+
+i## 2026-10-16: Etap 4, serwer NTP
+
+**Co zrobiłem**
+- Zainstalowałem chrony na maszynie DNS (172.18.22.69). Serwer pobiera czas z `2.rocky.pool.ntp.org`.
+- W `/etc/chrony.conf` dodałem `allow 172.18.22.0/24` (zgoda na zapytania z sieci labu) i `local stratum 10` (podawanie czasu także bez dostępu do internetu).
+- Otworzyłem usługę `ntp` w firewalld.
+- Zweryfikowałem z bastionu poleceniem `chronyd -Q 'server 172.18.22.69 iburst'`: różnica czasu poniżej 1 ms.
+
+**Co nie zadziałało i dlaczego**
+- Pierwszy test z bastionu zakończył się komunikatem „No suitable source for synchronisation”, bo uruchomiłem go przed konfiguracją serwera. Brakowało `allow` i otwartego portu w firewallu.
+- Na świeżym Rocky minimal nie było chrony, trzeba było go doinstalować.
+
+**Czego się nauczyłem**
+- Rozjechane zegary w klastrze powodują błędy certyfikatów TLS (`x509: certificate has expired or is not yet valid`) i problemy z etcd.
+- `local stratum 10` oznacza źródło awaryjne o niskiej wiarygodności: klient wybierze je tylko wtedy, gdy nie ma lepszego.
+- `chronyd -Q` pozwala sprawdzić serwer czasu bez zmiany konfiguracji klienta.
+- Węzły klastra dostaną adres serwera czasu przez MachineConfig w etapie 8.
+- Bez local serwer .69 po utracie internetu przestałby być uznawany za źródło czasu. Każdy węzeł zostałby sam ze swoim zegarem, a zegary maszyn wirtualnych rozjeżdżają się z różną prędkością. Po kilku godzinach mastery miałyby różny czas, co uderza w etcd i w weryfikację certyfikatów. Z local wszystkie węzły dalej biorą czas z .69. Nawet jeśli ten czas zacznie lekko odbiegać od rzeczywistego, to odbiega jednakowo dla całego klastra.
