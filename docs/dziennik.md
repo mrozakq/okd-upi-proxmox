@@ -87,3 +87,27 @@ i## 2026-10-16: Etap 4, serwer NTP
 - `chronyd -Q` pozwala sprawdzić serwer czasu bez zmiany konfiguracji klienta.
 - Węzły klastra dostaną adres serwera czasu przez MachineConfig w etapie 8.
 - Bez local serwer .69 po utracie internetu przestałby być uznawany za źródło czasu. Każdy węzeł zostałby sam ze swoim zegarem, a zegary maszyn wirtualnych rozjeżdżają się z różną prędkością. Po kilku godzinach mastery miałyby różny czas, co uderza w etcd i w weryfikację certyfikatów. Z local wszystkie węzły dalej biorą czas z .69. Nawet jeśli ten czas zacznie lekko odbiegać od rzeczywistego, to odbiega jednakowo dla całego klastra.
+
+## 2026-10-21: Etap 5 (części 1 do 3), maszyny HAProxy i konfiguracja load balancera
+
+**Co zrobiłem**
+- Postawiłem dwie VM: `ha1` (172.18.22.61) i `ha2` (172.18.22.62), Rocky Linux 9, systemowy DNS ustawiony na 172.18.22.69.
+- Zaplanowałem ruch dla czterech portów:
+  - 6443, Kubernetes API: bootstrap (backup), cp0, cp1, cp2
+  - 22623, Machine Config Server: bootstrap (backup), cp0, cp1, cp2
+  - 443 i 80, Ingress Controller: cp0, cp1, cp2
+- Napisałem `haproxy.cfg` w trybie TCP z health checkami, ustawiłem `haproxy_connect_any` w SELinux, otworzyłem porty w firewalld. HAProxy nasłuchuje na obu maszynach z identyczną konfiguracją.
+
+**Co nie zadziałało i dlaczego**
+- We wzorcu z dokumentacji zostały nazwy `ocp4.example.com`. HAProxy rozwiązuje nazwy serwerów przy starcie i nie uruchomił się (`could not resolve address`).
+- W sekcji 22623 wpisałem jako serwery `api` i `api-int`. Obie nazwy wskazują na VIP, czyli na sam load balancer, więc ruch krążyłby w pętli zamiast trafić do masterów.
+- W sekcjach 80 i 443 brakowało `cp2`.
+- Sekcja `defaults` z domyślnego pliku Rocky była ustawiona pod HTTP (`mode http`, `option httplog`, `option forwardfor`), co dawało ostrzeżenia przy usługach TCP.
+
+**Czego się nauczyłem**
+- HAProxy działa w trybie TCP, bo nie rozszyfrowuje ruchu: certyfikaty TLS ma klaster, nie load balancer.
+- `backup` przy bootstrapie oznacza, że dostaje ruch tylko wtedy, gdy żaden master nie przechodzi health checka. Na początku instalacji obsługuje wszystko, potem ruch sam przechodzi na mastery.
+- W klastrze kompaktowym Ingress Controller działa na masterach, więc to one są za portami 80 i 443. Bootstrap nigdy nie uruchamia aplikacji.
+- SELinux domyślnie blokuje HAProxy na niestandardowych portach. Rozwiązanie: `setsebool -P haproxy_connect_any 1`.
+- `ALERT` w `haproxy -c` zatrzymuje start, `WARNING` tylko informuje.
+- Pliki kopiowane z `/tmp` wymagają `restorecon`, bo zachowują stary kontekst SELinux.
