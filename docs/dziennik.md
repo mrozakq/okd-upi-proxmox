@@ -111,3 +111,26 @@ i## 2026-10-16: Etap 4, serwer NTP
 - SELinux domyślnie blokuje HAProxy na niestandardowych portach. Rozwiązanie: `setsebool -P haproxy_connect_any 1`.
 - `ALERT` w `haproxy -c` zatrzymuje start, `WARNING` tylko informuje.
 - Pliki kopiowane z `/tmp` wymagają `restorecon`, bo zachowują stary kontekst SELinux.
+
+## 2026-11-05: Etap 5 (część 4), keepalived i VIP
+
+**Co zrobiłem**
+- Skonfigurowałem keepalived na `ha1` (MASTER, priorytet 150) i `ha2` (BACKUP, priorytet 100). Wspólne: `virtual_router_id 101`, VIP 172.18.22.63/24, uwierzytelnianie VRRP.
+- Dodałem skrypt `chk_haproxy` (`/usr/bin/pidof haproxy`, co 2 sekundy, waga 60), uruchamiany jako systemowy użytkownik `keepalived_script` przy włączonym `enable_script_security`.
+- Otworzyłem protokół VRRP w firewalld na obu maszynach.
+- Testy z ciągłym pingiem z bastionu: zatrzymanie keepalived na ha1 i zatrzymanie samego HAProxy na ha1 przenoszą VIP na ha2, a po naprawie VIP wraca na ha1.
+
+**Co nie zadziałało i dlaczego**
+- Pierwsza wersja miała jako VIP adres ha1 (.61) i interfejs `eth0` z przykładu. Prawidłowo: VIP .63 z maską /24, interfejs `ens18`.
+- Do konfiguracji trafiły elementy z przykładów, których nie potrzebowałem: `vrrp_sync_group` z nieistniejącą instancją, skrypty `notify_*` wskazujące na nieistniejące pliki, `track_interface` dla własnego interfejsu, `priority 255` (zarezerwowany dla właściciela adresu).
+- Waga 2 przy różnicy priorytetów 50 nie przenosiła VIP po awarii HAProxy (150 kontra 102). Waga musi być większa niż różnica priorytetów, przyjąłem 60 na obu maszynach.
+- Po włączeniu `enable_script_security` skrypt został wyłączony, bo nie istniał domyślny użytkownik `keepalived_script`, a potem dlatego, że `pidof` był podany bez pełnej ścieżki.
+
+**Czego się nauczyłem**
+- keepalived używa VRRP: MASTER co sekundę ogłasza się w sieci, BACKUP przejmuje VIP, gdy ogłoszenia ustają, i rozsyła gratuitous ARP.
+- Między ha1 i ha2 różnią się tylko `state` i `priority`. `state` to rola startowa, o roli decyduje priorytet.
+- Bez skryptu sprawdzającego VIP zostałby na maszynie, na której padł sam HAProxy.
+- Z zasadą najmniejszych uprawnień: skrypt działa jako osobny użytkownik bez powłoki, dlatego `pidof` (czyta listę procesów), a nie `killall -0` (wysyła sygnał, czego zwykły użytkownik nie może zrobić procesowi innego użytkownika).
+- Przy `enable_script_security` polecenie w skrypcie musi mieć pełną ścieżkę.
+- Hasło VRRP typu `PASS` ma maksymalnie 8 znaków i idzie jawnym tekstem. Nie trafia do repo.
+- VIP wraca na ha1 dzięki preempcji. `nopreempt` (przy `state BACKUP` na obu) zapobiega przełączaniu tam i z powrotem, gdy główna maszyna jest niestabilna.
