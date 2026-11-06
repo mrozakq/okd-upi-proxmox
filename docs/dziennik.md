@@ -1,4 +1,4 @@
-# Dziennik prac
+et  Dziennik prac
 
 ## 2026-10-14: Etap 3 (część 1)
 
@@ -134,3 +134,24 @@ i## 2026-10-16: Etap 4, serwer NTP
 - Przy `enable_script_security` polecenie w skrypcie musi mieć pełną ścieżkę.
 - Hasło VRRP typu `PASS` ma maksymalnie 8 znaków i idzie jawnym tekstem. Nie trafia do repo.
 - VIP wraca na ha1 dzięki preempcji. `nopreempt` (przy `state BACKUP` na obu) zapobiega przełączaniu tam i z powrotem, gdy główna maszyna jest niestabilna.
+-Oba HAproxy sa niezbedne do wystawienia klastra na swiat, sam klaster wewnetrznie bedzie sprawny ale przestana dzialac porty 6443 api, 80 i 443 *.apps 6443 przez api-int oraz 22623 - nowy węzeł nie pobierze konfiguracji
+
+## 2026-11-06: Etap 6, serwer HTTP na bastionie
+
+**Co zrobiłem**
+- Zainstalowałem Apache (`httpd`) na bastionie i ustawiłem nasłuch na porcie 8080 (`Listen 8080`). Port 80 zostawiłem wolny, żeby nie mylić serwera plików z ruchem aplikacji, który w labie idzie przez HAProxy na porcie 80.
+- Utworzyłem katalog `/var/www/html/okd/` na pliki ignition i otworzyłem port 8080/tcp w firewalld na stałe.
+- Ustawiłem bastionowi stały adres 172.18.22.68, bramę 172.18.22.1 i DNS 172.18.22.69.
+- Test z ha1: `curl http://bastion.okdupiklaster.lab.okd:8080/okd/test.txt` zwraca zawartość pliku.
+
+**Co nie zadziałało i dlaczego**
+- Zmieniłem `Listen` na 8080, ale Apache dalej słuchał na 80, bo nie zrestartowałem usługi. Zmiana w pliku konfiguracyjnym działa dopiero po wczytaniu jej przez usługę.
+- Porty w firewallu i w konfiguracji Apache się rozjechały (otwarte 8008 i 8080, Apache na 80). Usunąłem omyłkowy 8008.
+- Mimo otwartego portu `curl` z ha1 zwracał „Brak trasy do hosta”. Bastion od początku miał adres z DHCP (.182), a DNS wskazywał na .68 z planu.
+
+**Czego się nauczyłem**
+- „Brak trasy do hosta” na Rocky to zwykle firewall albo zły adres docelowy. „Połączenie odrzucone” oznacza, że host odpowiada, ale na porcie nic nie słucha.
+- Test z `localhost` omija firewall i sieć, więc pozwala oddzielić problem z usługą od problemu z dostępem z zewnątrz.
+- `firewall-cmd` bez `--permanent` działa tylko do przeładowania, z `--permanent` dopiero po `--reload`. Zawsze oba kroki.
+- Po każdym etapie sprawdzam `ip -br a`, zamiast zakładać, że adres maszyny zgadza się z planem.
+- Pliki ignition zawierają certyfikaty i dane dostępowe. W labie udostępniam je przez HTTP bez hasła, w firmie: HTTPS, dostęp tylko z sieci węzłów i usunięcie plików po instalacji.
